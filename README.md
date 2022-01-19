@@ -10,7 +10,7 @@ License under MIT.
 - add root motion
 
 ## install
-git clone to blender addon dir.
+git clone this repository to blender addon dir.
 
 or download [zip](https://github.com/ywaby/mixamo2bl/archive/refs/heads/master.zip) then install in blender
 ```
@@ -23,10 +23,12 @@ preferences->addons
 ```
 
 ## usage
-3D View > UI (Right Panel) > Mixamo Tab
+3D View > UI (Right Panel) > Mixamo Tab  
+
+![screenshot](./screenshot.jpg)
 
 1. download mixamo animation with skin.
-2. import mixamo character with skin
+2. import mixamo character 
 3. download mixamo animations without skin to a folder.
 4. select download folder
 5. update
