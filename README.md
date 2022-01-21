@@ -27,18 +27,24 @@ preferences->addons->search "Mixamo Import"
 
 ![screenshot](./screenshot.jpg)
 
+
+workflow
 1. download mixamo animation with skin.
 2. import mixamo character 
 3. download mixamo animations without skin to a folder.
 4. select download folder
 5. update
 
+tips
+- *.dae need skin (without skin will lose armature origin position).
+- *.dae and *.fbx armture is not match, so don't mix use it.
 
 <!-- ## TODO
 - json config for rename bone 
-- support gltf
+- support dae
 - add NLA option if need
 
 BUG
 - can not move frame after import
+- dae import will break animation( reload blend fix it)
  -->

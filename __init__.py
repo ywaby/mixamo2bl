@@ -6,7 +6,7 @@
 import bpy
 import os
 from bpy_extras.io_utils import ImportHelper
-from bpy.props import StringProperty, BoolProperty, PointerProperty
+from bpy.props import StringProperty, BoolProperty, PointerProperty, CollectionProperty
 from bpy.types import Operator
 
 bl_info = {
@@ -106,22 +106,93 @@ class MIXAMO_OT_ImportCharater(Operator, ImportHelper):
     bl_idname = "mixamo.import_character"
     bl_label = "Import Mixamo Character"
     directory = StringProperty(
-        name="Character Dir",
+        name="File Dir",
     )
     filter_glob: StringProperty(
-        default="*.fbx",
+        default="*.fbx;*.dae",
         options={'HIDDEN'},
         maxlen=255,  # Max internal buffer length, longer would be clamped.
     )
+    filename: StringProperty(
+        name="File Name",
+    )
 
     def execute(self, context:  bpy.context):
-        mixamo_fix_import_fbx(context, self.filepath)
+        name, ext = os.path.splitext(self.filename)
+        if ext == '.fbx':
+            mixamo_fix_import_fbx(context, self.filepath)
+        elif ext == '.dae':
+            mixamo_fix_import_dae(context, self.filepath)
+        else:
+            return {'CANCELLED'}
         armature = context.active_object
         armature.is_mixamo_character = True
         action_2_NAL(armature, armature.animation_data.action)
         return{'FINISHED'}
 
-def mixamo_fix_import_fbx(context, dir:str):
+
+def mixamo_fix_import_dae(context: bpy.context, dir: str):
+    """import mixamo (*.dae), 
+    rename ,
+    add root motion, 
+    etc. 
+    BUG skin move
+    root motion 
+    """
+    file = os.path.basename(dir)
+    print(f"input file:{dir}")
+    name, ext = os.path.splitext(file)
+    bpy.ops.wm.collada_import(
+        filepath=dir,
+        auto_connect=True,
+        # ignore_leaf_bones=context.scene.mixamo.ignore_leaf_bones, #TODO set when suport
+    )
+    arm_obj = [
+        obj for obj in context.selected_objects if obj.type == 'ARMATURE'][0]
+    context.view_layer.objects.active = arm_obj
+    anim_data: bpy.types.AnimData = arm_obj.animation_data
+    armature: bpy.types.Armature = arm_obj.data
+    action = anim_data.action
+    fcurves = action.fcurves
+    # rename Action
+    action.name = name
+    # rename bones
+    for k, v in bone_rename_maps.items():
+        k = k.replace('mixamorig:', 'mixamorig_')
+        if k in armature.bones:
+            armature.bones[k.replace('mixamorig:', 'mixamorig_')].name = v
+    # fix scale
+    scale = arm_obj.scale
+    scale_animation(fcurves, scale)
+    # fix rotation
+    bpy.ops.object.transform_apply(
+        location=True, rotation=True, scale=True)
+    # add root motion from hips
+    if context.scene.mixamo.add_root_motion:
+        # TODO direct copy fcurve data from hips to root
+        # add root bone
+        mixamo_add_root_motion(armature, fcurves)
+
+
+def mixamo_add_root_motion(armature, fcurves):
+    """add root motion"""
+    # add root bone
+    bpy.ops.object.mode_set(mode='EDIT', toggle=False)
+    root = armature.edit_bones.new('root')
+    root.head = (0, 0, 0)
+    root.tail = (0, 0, 0.25)
+    armature.edit_bones['hips'].parent = root
+    bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
+    # hips location to rootbone
+    fcurves.find(data_path='pose.bones["hips"].location',
+                 index=0).data_path = 'pose.bones["root"].location'
+    fcurves.find(data_path='pose.bones["hips"].location',
+                 index=1).data_path = 'pose.bones["root"].location'
+    fcurves.find(data_path='pose.bones["hips"].location',
+                 index=2).data_path = 'pose.bones["root"].location'
+
+
+def mixamo_fix_import_fbx(context, dir: str):
     """import mixamo (*.fbx), 
     rename ,
     fix scale,
@@ -135,10 +206,13 @@ def mixamo_fix_import_fbx(context, dir:str):
         filepath=dir,
         ignore_leaf_bones=context.scene.mixamo.ignore_leaf_bones,
         automatic_bone_orientation=True)
-    anim_data:bpy.types.AnimData = context.active_object.animation_data
-    armature: bpy.types.Armature = context.active_object.data
+    arm_obj = [
+        obj for obj in context.selected_objects if obj.type == 'ARMATURE'][0]
+    context.view_layer.objects.active = arm_obj
+    anim_data: bpy.types.AnimData = arm_obj.animation_data
+    armature: bpy.types.Armature = arm_obj.data
     action = anim_data.action
-    fcurves=action.fcurves
+    fcurves = action.fcurves
     # rename Action
     action.name = name
     # rename bones
@@ -147,7 +221,7 @@ def mixamo_fix_import_fbx(context, dir:str):
             armature.bones[k].name = v
 
     # fix scale
-    scale = context.active_object.scale
+    scale = arm_obj.scale
     scale_animation(fcurves, scale)
 
     # fix rotation
@@ -156,18 +230,7 @@ def mixamo_fix_import_fbx(context, dir:str):
 
     # add root motion from hips
     if context.scene.mixamo.add_root_motion:
-        #TODO direct copy fcurve data from hips to root
-        # add root bone
-        bpy.ops.object.mode_set(mode='EDIT', toggle=False)
-        root = armature.edit_bones.new('root')
-        root.head = (0, 0, 0)
-        root.tail = (0, 0, 0.25)
-        armature.edit_bones['hips'].parent = root
-        bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
-        # hips location to rootbone
-        fcurves.find(data_path='pose.bones["hips"].location',index=0).data_path='pose.bones["root"].location'
-        fcurves.find(data_path='pose.bones["hips"].location',index=1).data_path='pose.bones["root"].location'
-        fcurves.find(data_path='pose.bones["hips"].location',index=2).data_path='pose.bones["root"].location'
+        mixamo_add_root_motion(armature, fcurves)
 
 
 class MIXAMO_OT_Update(Operator):
@@ -189,18 +252,21 @@ class MIXAMO_OT_Update(Operator):
             self.report({'WARNING'},
                         'Not Found mixamo character in current scene.')
             return {'CANCELLED'}
-        if len(target_arms) == 1:
+        elif len(target_arms) == 1:
             self.target_arm = target_arms[0]
         else:
             self.report({'WARNING'},
                         'Too many mixamo character in current scene.')
             return {'CANCELLED'}
 
-        input_path = context.scene.mixamo.input_dir
-        files = os.listdir(input_path)
+        input_folder = context.scene.mixamo.input_folder
+        input_folder = bpy.path.abspath(input_folder)
+        files = os.listdir(input_folder)
         for file in files:
             name, ext = os.path.splitext(file)
-            dir = os.path.join(input_path, file)
+            dir = os.path.join(input_folder, file)
+            print('DEBUG')
+            print(dir)
             if name in bpy.data.actions:  # if exist, pass
                 continue
             if ext == '.fbx':
@@ -209,12 +275,13 @@ class MIXAMO_OT_Update(Operator):
                 action_2_NAL(self.target_arm, bpy.data.actions[name])
                 # remove
                 bpy.ops.object.delete()
-            elif ext == '.gltf':
-                continue  # TODO
+            elif ext == '.dae':
+                mixamo_fix_import_dae(context, dir)
+                action_2_NAL(self.target_arm, bpy.data.actions[name])
+                bpy.ops.object.delete()
             else:
                 continue
         return{'FINISHED'}
-
 
 
 class MIXAMO_PT_Main(bpy.types.Panel):
@@ -244,26 +311,27 @@ class MIXAMO_PT_Main(bpy.types.Panel):
         row.operator("mixamo.import_character")
         box = layout.box()
         row = box.row()
-        row.prop(scene.mixamo, "input_dir")
+        row.prop(scene.mixamo, "input_folder")
         row = box.row()
         row.operator("mixamo.update")
 
 
 class MixamoPropertyGroup(bpy.types.PropertyGroup):
-    input_dir: StringProperty(
-        name="Mixamo Path",
-        description="Path to mixamo",
+    input_folder: StringProperty(
+        name="Mixamo Animations Folder",
+        description="Path to mixamo animations folder.",
         maxlen=256,
         default="",
         subtype='DIR_PATH')
     add_root_motion: BoolProperty(
         name='Add Root Motion',
-        description='Add root bone and copy motion from hips',
+        description='Add root bone and copy motion from hips.',
         default=False)
     ignore_leaf_bones: BoolProperty(
         name='Ignore Leaf Bones',
-        description='Remove Leaf Bones ',
+        description='Remove leaf bones.',
         default=False)
+
 
 classes = (
     MixamoPropertyGroup,
