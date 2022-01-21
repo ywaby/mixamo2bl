@@ -19,7 +19,7 @@ preferences->addons->install
 
 enable addon 
 ```
-preferences->addons
+preferences->addons->search "Mixamo Import"
 ```
 
 ## usage
@@ -37,8 +37,8 @@ preferences->addons
 <!-- ## TODO
 - json config for rename bone 
 - support gltf
-- add leaf bone option if need
+- add NLA option if need
 
 BUG
-- can not move frame alfter import
+- can not move frame after import
  -->

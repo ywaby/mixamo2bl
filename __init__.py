@@ -161,7 +161,7 @@ def mixamo_fix_import_fbx(context, dir:str):
         bpy.ops.object.mode_set(mode='EDIT', toggle=False)
         root = armature.edit_bones.new('root')
         root.head = (0, 0, 0)
-        root.tail = (0, 0, 0.5)
+        root.tail = (0, 0, 0.25)
         armature.edit_bones['hips'].parent = root
         bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
         # hips location to rootbone
@@ -251,7 +251,7 @@ class MIXAMO_PT_Main(bpy.types.Panel):
 
 class MixamoPropertyGroup(bpy.types.PropertyGroup):
     input_dir: StringProperty(
-        name="mixamo Path",
+        name="Mixamo Path",
         description="Path to mixamo",
         maxlen=256,
         default="",
@@ -261,7 +261,7 @@ class MixamoPropertyGroup(bpy.types.PropertyGroup):
         description='Add root bone and copy motion from hips',
         default=False)
     ignore_leaf_bones: BoolProperty(
-        name='Ignore_Leaf Bones',
+        name='Ignore Leaf Bones',
         description='Remove Leaf Bones ',
         default=False)
 
@@ -279,7 +279,7 @@ def register():
     bpy.types.Scene.mixamo = PointerProperty(
         type=MixamoPropertyGroup)
     bpy.types.Object.is_mixamo_character = BoolProperty(
-        name='is mixamo character',
+        name='Is Mixamo Character',
         description='Merge animation to this object',
         default=False)
 
