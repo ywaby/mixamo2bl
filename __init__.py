@@ -136,8 +136,6 @@ def mixamo_fix_import_dae(context: bpy.context, dir: str):
     rename ,
     add root motion, 
     etc. 
-    BUG skin move
-    root motion 
     """
     file = os.path.basename(dir)
     print(f"input file:{dir}")
@@ -241,7 +239,6 @@ class MIXAMO_OT_Update(Operator):
 
     @classmethod
     def poll(cls, context: bpy.context):
-        bpy.context.scene.frame_set(1)
         return True
 
     def execute(self, context: bpy.context):

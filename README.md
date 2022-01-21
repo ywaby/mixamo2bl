@@ -41,10 +41,7 @@ tips
 
 <!-- ## TODO
 - json config for rename bone 
-- support dae
 - add NLA option if need
 
 BUG
-- can not move frame after import
-- dae import will break animation( reload blend fix it)
  -->
