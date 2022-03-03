@@ -42,6 +42,9 @@ tips
 <!-- ## TODO
 - json config for rename bone 
 - add NLA option if need
-
+- unit test
+- add github sponars
+- add control rig shape
 BUG
+
  -->

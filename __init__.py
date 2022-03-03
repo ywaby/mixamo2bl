@@ -3,6 +3,7 @@
 # This software is released under the MIT License.
 # https://opensource.org/licenses/MIT
 
+from distutils.command.sdist import sdist
 import bpy
 import os
 from bpy_extras.io_utils import ImportHelper
@@ -94,7 +95,6 @@ def action_2_NAL(arm_obj, action: bpy.types.Action):
 
 def scale_animation(fcurves: list[bpy.types.FCurve], scale):
     for fc in fcurves:
-        # TODO how to know fcurve location xyz
         if fc.data_path.endswith('.location'):
             for key in fc.keyframe_points:
                 val = key.co_ui
@@ -126,13 +126,12 @@ class MIXAMO_OT_ImportCharater(Operator, ImportHelper):
         else:
             return {'CANCELLED'}
         armature = context.active_object
-        armature.is_mixamo_character = True
         action_2_NAL(armature, armature.animation_data.action)
         return{'FINISHED'}
 
 
 def mixamo_fix_import_dae(context: bpy.context, dir: str):
-    """import mixamo (*.dae), 
+    """import mixamo animation (*.dae), 
     rename ,
     add root motion, 
     etc. 
@@ -167,8 +166,6 @@ def mixamo_fix_import_dae(context: bpy.context, dir: str):
         location=True, rotation=True, scale=True)
     # add root motion from hips
     if context.scene.mixamo.add_root_motion:
-        # TODO direct copy fcurve data from hips to root
-        # add root bone
         mixamo_add_root_motion(armature, fcurves)
 
 
@@ -243,17 +240,9 @@ class MIXAMO_OT_Update(Operator):
 
     def execute(self, context: bpy.context):
         # find mixamo character
-        target_arms = [object for object in context.scene.objects
-                       if object.is_mixamo_character]
-        if len(target_arms) == 0:
+        if context.scene.mixamo_character == None:
             self.report({'WARNING'},
                         'Not Found mixamo character in current scene.')
-            return {'CANCELLED'}
-        elif len(target_arms) == 1:
-            self.target_arm = target_arms[0]
-        else:
-            self.report({'WARNING'},
-                        'Too many mixamo character in current scene.')
             return {'CANCELLED'}
 
         input_folder = context.scene.mixamo.input_folder
@@ -262,8 +251,6 @@ class MIXAMO_OT_Update(Operator):
         for file in files:
             name, ext = os.path.splitext(file)
             dir = os.path.join(input_folder, file)
-            print('DEBUG')
-            print(dir)
             if name in bpy.data.actions:  # if exist, pass
                 continue
             if ext == '.fbx':
@@ -292,17 +279,28 @@ class MIXAMO_PT_Main(bpy.types.Panel):
         layout = self.layout
         scene = bpy.context.scene
         obj = context.active_object
-        if obj is not None and obj.type == 'ARMATURE':
-            box = layout.box()
-            row = box.row()
-            row.prop(context.active_object, "is_mixamo_character")
+        box = layout.box()
+        row = box.row()
+        row.prop(scene, "mixamo_character")
+
         box = layout.box()
         row = box.row()
         row.label(text="Import Option")
         row = box.row()
         row.prop(scene.mixamo, 'ignore_leaf_bones')
+
         row = box.row()
         row.prop(scene.mixamo, 'add_root_motion')
+        if scene.mixamo.add_root_motion:
+            box = layout.box()
+            row = box.row(align=True)
+            row.label(text='location')
+            row.prop(scene.mixamo, 'root_motion_copy_lx',
+                     text='x', toggle=True)
+            row.prop(scene.mixamo, 'root_motion_copy_lz',
+                     text='y', toggle=True)
+            row.prop(scene.mixamo, 'root_motion_copy_ly',
+                     text='z', toggle=True)
         box = layout.box()
         row = box.row()
         row.operator("mixamo.import_character")
@@ -314,6 +312,11 @@ class MIXAMO_PT_Main(bpy.types.Panel):
 
 
 class MixamoPropertyGroup(bpy.types.PropertyGroup):
+    # TODO use it when bug fixed
+    # armture = PointerProperty(
+    #     type=bpy.types.Object,
+    #     name='Mixamo Armature',
+    #     description='Merge animation to this object')
     input_folder: StringProperty(
         name="Mixamo Animations Folder",
         description="Path to mixamo animations folder.",
@@ -324,6 +327,30 @@ class MixamoPropertyGroup(bpy.types.PropertyGroup):
         name='Add Root Motion',
         description='Add root bone and copy motion from hips.',
         default=False)
+    root_motion_copy_lx: BoolProperty(
+        name='Root Motion Copy Location x',
+        description='Root bone copy location x from hips.',
+        default=True)
+    root_motion_copy_ly: BoolProperty(
+        name='Root Motion Copy Location y',
+        description='Root bone copy location y from hips.',
+        default=True)
+    root_motion_copy_lz: BoolProperty(
+        name='Root Motion Copy  Location z',
+        description='Root bone copy location z from hips.',
+        default=True)
+    root_motion_copy_rx: BoolProperty(
+        name='Root Motion Copy Rotaion x',
+        description='Root bone copy rotaion x from hips.',
+        default=True)
+    root_motion_copy_ry: BoolProperty(
+        name='Root Motion Copy Rotaion y',
+        description='Root bone copy rotaion y from hips.',
+        default=True)
+    root_motion_copy_rz: BoolProperty(
+        name='Root Motion Copy Rotaion z',
+        description='Root bone copy rotaion z from hips.',
+        default=True)
     ignore_leaf_bones: BoolProperty(
         name='Ignore Leaf Bones',
         description='Remove leaf bones.',
@@ -343,17 +370,17 @@ def register():
         bpy.utils.register_class(cls)
     bpy.types.Scene.mixamo = PointerProperty(
         type=MixamoPropertyGroup)
-    bpy.types.Object.is_mixamo_character = BoolProperty(
-        name='Is Mixamo Character',
-        description='Merge animation to this object',
-        default=False)
+    bpy.types.Scene.mixamo_character = PointerProperty(
+        type=bpy.types.Object,
+        name='Mixamo Armature',
+        description='Merge animation to this object')
 
 
 def unregister():
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.mixamo
-    del bpy.types.Object.is_mixamo_character
+    del bpy.types.Scene.mixamo_character
 
 
 if __name__ == "__main__":
