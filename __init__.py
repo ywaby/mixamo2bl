@@ -126,6 +126,7 @@ class MIXAMO_OT_ImportCharater(Operator, ImportHelper):
         else:
             return {'CANCELLED'}
         armature = context.active_object
+        context.scene.mixamo_character = armature
         action_2_NAL(armature, armature.animation_data.action)
         return{'FINISHED'}
 
@@ -166,10 +167,10 @@ def mixamo_fix_import_dae(context: bpy.context, dir: str):
         location=True, rotation=True, scale=True)
     # add root motion from hips
     if context.scene.mixamo.add_root_motion:
-        mixamo_add_root_motion(armature, fcurves)
+        mixamo_add_root_motion(context.scene.mixamo, armature, fcurves)
 
 
-def mixamo_add_root_motion(armature, fcurves):
+def mixamo_add_root_motion(mixamo, armature, fcurves):
     """add root motion"""
     # add root bone
     bpy.ops.object.mode_set(mode='EDIT', toggle=False)
@@ -179,12 +180,25 @@ def mixamo_add_root_motion(armature, fcurves):
     armature.edit_bones['hips'].parent = root
     bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
     # hips location to rootbone
-    fcurves.find(data_path='pose.bones["hips"].location',
-                 index=0).data_path = 'pose.bones["root"].location'
-    fcurves.find(data_path='pose.bones["hips"].location',
-                 index=1).data_path = 'pose.bones["root"].location'
-    fcurves.find(data_path='pose.bones["hips"].location',
-                 index=2).data_path = 'pose.bones["root"].location'
+    if mixamo.root_motion_copy_lx:
+        fcurves.find(data_path='pose.bones["hips"].location',
+                     index=0).data_path = 'pose.bones["root"].location'
+    if mixamo.root_motion_copy_ly:
+        fcurves.find(data_path='pose.bones["hips"].location',
+                     index=1).data_path = 'pose.bones["root"].location'
+    if mixamo.root_motion_copy_lz:
+        fcurves.find(data_path='pose.bones["hips"].location',
+                     index=2).data_path = 'pose.bones["root"].location'
+
+    if mixamo.root_motion_copy_r:
+        fcurves.find(data_path='pose.bones["hips"].rotation_quaternion',
+                     index=0).data_path = 'pose.bones["root"].rotation_quaternion'
+        fcurves.find(data_path='pose.bones["hips"].rotation_quaternion',
+                     index=1).data_path = 'pose.bones["root"].rotation_quaternion'
+        fcurves.find(data_path='pose.bones["hips"].rotation_quaternion',
+                     index=2).data_path = 'pose.bones["root"].rotation_quaternion'
+        fcurves.find(data_path='pose.bones["hips"].rotation_quaternion',
+                     index=3).data_path = 'pose.bones["root"].rotation_quaternion'
 
 
 def mixamo_fix_import_fbx(context, dir: str):
@@ -225,7 +239,7 @@ def mixamo_fix_import_fbx(context, dir: str):
 
     # add root motion from hips
     if context.scene.mixamo.add_root_motion:
-        mixamo_add_root_motion(armature, fcurves)
+        mixamo_add_root_motion(context.scene.mixamo, armature, fcurves)
 
 
 class MIXAMO_OT_Update(Operator):
@@ -239,7 +253,7 @@ class MIXAMO_OT_Update(Operator):
         return True
 
     def execute(self, context: bpy.context):
-        # find mixamo character
+        mixamo_character=context.scene.mixamo_character
         if context.scene.mixamo_character == None:
             self.report({'WARNING'},
                         'Not Found mixamo character in current scene.')
@@ -256,12 +270,12 @@ class MIXAMO_OT_Update(Operator):
             if ext == '.fbx':
                 mixamo_fix_import_fbx(context, dir)
                 # add animation  to NAL
-                action_2_NAL(self.target_arm, bpy.data.actions[name])
+                action_2_NAL(mixamo_character, bpy.data.actions[name])
                 # remove
                 bpy.ops.object.delete()
             elif ext == '.dae':
                 mixamo_fix_import_dae(context, dir)
-                action_2_NAL(self.target_arm, bpy.data.actions[name])
+                action_2_NAL(mixamo_character, bpy.data.actions[name])
                 bpy.ops.object.delete()
             else:
                 continue
@@ -292,7 +306,9 @@ class MIXAMO_PT_Main(bpy.types.Panel):
         row = box.row()
         row.prop(scene.mixamo, 'add_root_motion')
         if scene.mixamo.add_root_motion:
-            box = layout.box()
+            box = box.box()
+            row = box.row(align=True)
+            row.label(text='convert root motion from hips')
             row = box.row(align=True)
             row.label(text='location')
             row.prop(scene.mixamo, 'root_motion_copy_lx',
@@ -301,6 +317,9 @@ class MIXAMO_PT_Main(bpy.types.Panel):
                      text='y', toggle=True)
             row.prop(scene.mixamo, 'root_motion_copy_ly',
                      text='z', toggle=True)
+            row = box.row(align=True)
+            row.prop(scene.mixamo, 'root_motion_copy_r',
+                     text='Rotation Quaternion', toggle=True)
         box = layout.box()
         row = box.row()
         row.operator("mixamo.import_character")
@@ -323,6 +342,10 @@ class MixamoPropertyGroup(bpy.types.PropertyGroup):
         maxlen=256,
         default="",
         subtype='DIR_PATH')
+    ignore_leaf_bones: BoolProperty(
+        name='Ignore Leaf Bones',
+        description='Ignore leaf bones when import mixamo.',
+        default=False)
     add_root_motion: BoolProperty(
         name='Add Root Motion',
         description='Add root bone and copy motion from hips.',
@@ -336,25 +359,13 @@ class MixamoPropertyGroup(bpy.types.PropertyGroup):
         description='Root bone copy location y from hips.',
         default=True)
     root_motion_copy_lz: BoolProperty(
-        name='Root Motion Copy  Location z',
+        name='Root Motion Copy Location z',
         description='Root bone copy location z from hips.',
         default=True)
-    root_motion_copy_rx: BoolProperty(
-        name='Root Motion Copy Rotaion x',
-        description='Root bone copy rotaion x from hips.',
+    root_motion_copy_r: BoolProperty(
+        name='Root Motion Copy Rotaion Quaternion',
+        description='Root bone copy rotaion from hips.',
         default=True)
-    root_motion_copy_ry: BoolProperty(
-        name='Root Motion Copy Rotaion y',
-        description='Root bone copy rotaion y from hips.',
-        default=True)
-    root_motion_copy_rz: BoolProperty(
-        name='Root Motion Copy Rotaion z',
-        description='Root bone copy rotaion z from hips.',
-        default=True)
-    ignore_leaf_bones: BoolProperty(
-        name='Ignore Leaf Bones',
-        description='Remove leaf bones.',
-        default=False)
 
 
 classes = (
