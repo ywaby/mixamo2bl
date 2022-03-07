@@ -37,17 +37,18 @@ workflow
 
 tips
 - *.dae need skin (without skin will lose armature origin position (edit mode)).
-
+- dae has a lot problem, use fbx is prefered
 <!-- ## TODO
 - json preset for rename bone 
 - add NLA option if need
 - unit test
 - add github sponars
 - add control rig shape
-- conect bone and set roll =0 then recalc animation
+- conect bone and set roll =0 then recalc animatio
+- remove dae supportn
 BUG
  -->
- 
+
 ## isuse
 #### why not connect bone when import
 for keep bone `roll=0` for
