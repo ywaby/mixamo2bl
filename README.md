@@ -36,15 +36,20 @@ workflow
 5. update
 
 tips
-- *.dae need skin (without skin will lose armature origin position).
-- *.dae and *.fbx armture is not match, so don't mix use it.
+- *.dae need skin (without skin will lose armature origin position (edit mode)).
 
 <!-- ## TODO
-- json config for rename bone 
+- json preset for rename bone 
 - add NLA option if need
 - unit test
 - add github sponars
 - add control rig shape
+- conect bone and set roll =0 then recalc animation
 BUG
-
  -->
+ 
+## isuse
+#### why not connect bone when import
+for keep bone `roll=0` for
+- mirror animation work
+- dae and fbx can work together

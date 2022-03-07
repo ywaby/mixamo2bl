@@ -3,20 +3,23 @@
 # This software is released under the MIT License.
 # https://opensource.org/licenses/MIT
 
+# notes
+
+
 from distutils.command.sdist import sdist
 import bpy
 import os
 from bpy_extras.io_utils import ImportHelper
-from bpy.props import StringProperty, BoolProperty, PointerProperty, CollectionProperty
+from bpy.props import StringProperty, BoolProperty, PointerProperty
 from bpy.types import Operator
 
 bl_info = {
     "name": "Mixamo Import",
     "author": "ywaby",
-    "version": (0, 1, 0),
+    "version": (0, 1, 1),
     "blender": (3, 0, 0),
     "location": "3D View > UI (Right Panel) > Mixamo Tab",
-    "description": ("Import mixamo animations"),
+    "description": ("Import And Update mixamo animations"),
     "warning": "",
     "wiki_url": "https://github.com/ywaby/mixamo2bl",
     "tracker_url": "https://github.com/ywaby/mixamo2bl/issues",
@@ -24,63 +27,62 @@ bl_info = {
     "support": "COMMUNITY",
 }
 
-
 bone_rename_maps = {
     # 'root': 'root',
     'mixamorig:Hips': 'hips',
     'mixamorig:Spine': 'spine_01',
     'mixamorig:Spine1': 'spine_02',
     'mixamorig:Spine2': 'spine_03',
-    'mixamorig:LeftShoulder': 'shoulder_l',
-    'mixamorig:LeftArm': 'upperarm_l',
-    'mixamorig:LeftForeArm': 'lowerarm_l',
-    'mixamorig:LeftHand': 'hand_l',
-    'mixamorig:RightShoulder': 'shoulder_r',
-    'mixamorig:RightArm': 'upperarm_r',
-    'mixamorig:RightForeArm': 'lowerarm_r',
-    'mixamorig:RightHand': 'hand_r',
+    'mixamorig:LeftShoulder': 'shoulder_L',
+    'mixamorig:LeftArm': 'upperarm_L',
+    'mixamorig:LeftForeArm': 'lowerarm_L',
+    'mixamorig:LeftHand': 'hand_L',
+    'mixamorig:RightShoulder': 'shoulder_R',
+    'mixamorig:RightArm': 'upperarm_R',
+    'mixamorig:RightForeArm': 'lowerarm_R',
+    'mixamorig:RightHand': 'hand_R',
     'mixamorig:Head': 'head',
     'mixamorig:Neck': 'neck',
-    'mixamorig:LeftEye': 'eye_l',
-    'mixamorig:RightEye': 'eye_r',
-    'mixamorig:LeftUpLeg': 'thigh_l',
-    'mixamorig:LeftLeg': 'shin_l',
-    'mixamorig:LeftFoot': 'foot_l',
-    'mixamorig:RightUpLeg': 'thigh_r',
-    'mixamorig:RightLeg': 'shin_r',
-    'mixamorig:RightFoot': 'foot_r',
-    'mixamorig:LeftHandIndex1': 'index_01_l',
-    'mixamorig:LeftHandIndex2': 'index_02_l',
-    'mixamorig:LeftHandIndex3': 'index_03_l',
-    'mixamorig:LeftHandMiddle1': 'middle_01_l',
-    'mixamorig:LeftHandMiddle2': 'middle_02_l',
-    'mixamorig:LeftHandMiddle3': 'middle_03_l',
-    'mixamorig:LeftHandPinky1': 'pinky_01_l',
-    'mixamorig:LeftHandPinky2': 'pinky_02_l',
-    'mixamorig:LeftHandPinky3': 'pinky_03_l',
-    'mixamorig:LeftHandRing1': 'ring_01_l',
-    'mixamorig:LeftHandRing2': 'ring_02_l',
-    'mixamorig:LeftHandRing3': 'ring_03_l',
-    'mixamorig:LeftHandThumb1': 'thumb_01_l',
-    'mixamorig:LeftHandThumb2': 'thumb_02_l',
-    'mixamorig:LeftHandThumb3': 'thumb_03_l',
-    'mixamorig:RightHandIndex1': 'index_01_r',
-    'mixamorig:RightHandIndex2': 'index_02_r',
-    'mixamorig:RightHandIndex3': 'index_03_r',
-    'mixamorig:RightHandMiddle1': 'middle_01_r',
-    'mixamorig:RightHandMiddle2': 'middle_02_r',
-    'mixamorig:RightHandMiddle3': 'middle_03_r',
-    'mixamorig:RightHandPinky1': 'pinky_01_r',
-    'mixamorig:RightHandPinky2': 'pinky_02_r',
-    'mixamorig:RightHandPinky3': 'pinky_03_r',
-    'mixamorig:RightHandRing1': 'ring_01_r',
-    'mixamorig:RightHandRing2': 'ring_02_r',
-    'mixamorig:RightHandRing3': 'ring_03_r',
-    'mixamorig:RightHandThumb1': 'thumb_01_r',
-    'mixamorig:RightHandThumb2': 'thumb_02_r',
-    'mixamorig:RightHandThumb3': 'thumb_03_r',
-    'mixamorig:LeftToeBase': 'toe_l',
-    'mixamorig:RightToeBase': 'toe_r'
+    'mixamorig:LeftEye': 'eye_L',
+    'mixamorig:RightEye': 'eye_R',
+    'mixamorig:LeftUpLeg': 'thigh_L',
+    'mixamorig:LeftLeg': 'shin_L',
+    'mixamorig:LeftFoot': 'foot_L',
+    'mixamorig:RightUpLeg': 'thigh_R',
+    'mixamorig:RightLeg': 'shin_R',
+    'mixamorig:RightFoot': 'foot_R',
+    'mixamorig:LeftHandIndex1': 'index_01_L',
+    'mixamorig:LeftHandIndex2': 'index_02_L',
+    'mixamorig:LeftHandIndex3': 'index_03_L',
+    'mixamorig:LeftHandMiddle1': 'middle_01_L',
+    'mixamorig:LeftHandMiddle2': 'middle_02_L',
+    'mixamorig:LeftHandMiddle3': 'middle_03_L',
+    'mixamorig:LeftHandPinky1': 'pinky_01_L',
+    'mixamorig:LeftHandPinky2': 'pinky_02_L',
+    'mixamorig:LeftHandPinky3': 'pinky_03_L',
+    'mixamorig:LeftHandRing1': 'ring_01_L',
+    'mixamorig:LeftHandRing2': 'ring_02_L',
+    'mixamorig:LeftHandRing3': 'ring_03_L',
+    'mixamorig:LeftHandThumb1': 'thumb_01_L',
+    'mixamorig:LeftHandThumb2': 'thumb_02_L',
+    'mixamorig:LeftHandThumb3': 'thumb_03_L',
+    'mixamorig:RightHandIndex1': 'index_01_R',
+    'mixamorig:RightHandIndex2': 'index_02_R',
+    'mixamorig:RightHandIndex3': 'index_03_R',
+    'mixamorig:RightHandMiddle1': 'middle_01_R',
+    'mixamorig:RightHandMiddle2': 'middle_02_R',
+    'mixamorig:RightHandMiddle3': 'middle_03_R',
+    'mixamorig:RightHandPinky1': 'pinky_01_R',
+    'mixamorig:RightHandPinky2': 'pinky_02_R',
+    'mixamorig:RightHandPinky3': 'pinky_03_R',
+    'mixamorig:RightHandRing1': 'ring_01_R',
+    'mixamorig:RightHandRing2': 'ring_02_R',
+    'mixamorig:RightHandRing3': 'ring_03_R',
+    'mixamorig:RightHandThumb1': 'thumb_01_R',
+    'mixamorig:RightHandThumb2': 'thumb_02_R',
+    'mixamorig:RightHandThumb3': 'thumb_03_R',
+    'mixamorig:LeftToeBase': 'toe_L',
+    'mixamorig:RightToeBase': 'toe_R'
 }
 
 
@@ -105,18 +107,16 @@ class MIXAMO_OT_ImportCharater(Operator, ImportHelper):
     '''Import mixamo character with skin (*.fbx) for animation to merge in'''
     bl_idname = "mixamo.import_character"
     bl_label = "Import Mixamo Character"
-    directory = StringProperty(
-        name="File Dir",
-    )
     filter_glob: StringProperty(
         default="*.fbx;*.dae",
         options={'HIDDEN'},
         maxlen=255,  # Max internal buffer length, longer would be clamped.
     )
+    filter_folder : BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
+
     filename: StringProperty(
         name="File Name",
     )
-
     def execute(self, context:  bpy.context):
         name, ext = os.path.splitext(self.filename)
         if ext == '.fbx':
@@ -126,8 +126,9 @@ class MIXAMO_OT_ImportCharater(Operator, ImportHelper):
         else:
             return {'CANCELLED'}
         armature = context.active_object
-        context.scene.mixamo_character = armature
         action_2_NAL(armature, armature.animation_data.action)
+        context.scene.mixamo_character = armature
+        context.scene.mixamo.input_folder = os.path.dirname(self.filepath)
         return{'FINISHED'}
 
 
@@ -142,7 +143,7 @@ def mixamo_fix_import_dae(context: bpy.context, dir: str):
     name, ext = os.path.splitext(file)
     bpy.ops.wm.collada_import(
         filepath=dir,
-        auto_connect=True,
+        # auto_connect=True
         # ignore_leaf_bones=context.scene.mixamo.ignore_leaf_bones, #TODO set when suport
     )
     arm_obj = [
@@ -214,7 +215,8 @@ def mixamo_fix_import_fbx(context, dir: str):
     bpy.ops.import_scene.fbx(
         filepath=dir,
         ignore_leaf_bones=context.scene.mixamo.ignore_leaf_bones,
-        automatic_bone_orientation=True)
+        # automatic_bone_orientation=True # (cause bone roll,and mirror ops err)
+    )
     arm_obj = [
         obj for obj in context.selected_objects if obj.type == 'ARMATURE'][0]
     context.view_layer.objects.active = arm_obj
@@ -253,7 +255,7 @@ class MIXAMO_OT_Update(Operator):
         return True
 
     def execute(self, context: bpy.context):
-        mixamo_character=context.scene.mixamo_character
+        mixamo_character = context.scene.mixamo_character
         if context.scene.mixamo_character == None:
             self.report({'WARNING'},
                         'Not Found mixamo character in current scene.')
@@ -328,7 +330,6 @@ class MIXAMO_PT_Main(bpy.types.Panel):
         row.prop(scene.mixamo, "input_folder")
         row = box.row()
         row.operator("mixamo.update")
-
 
 class MixamoPropertyGroup(bpy.types.PropertyGroup):
     # TODO use it when bug fixed
