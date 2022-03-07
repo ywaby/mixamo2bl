@@ -108,7 +108,7 @@ class MIXAMO_OT_ImportCharater(Operator, ImportHelper):
     bl_idname = "mixamo.import_character"
     bl_label = "Import Mixamo Character"
     filter_glob: StringProperty(
-        default="*.fbx;*.dae",
+        default="*.fbx",
         options={'HIDDEN'},
         maxlen=255,  # Max internal buffer length, longer would be clamped.
     )
@@ -119,56 +119,13 @@ class MIXAMO_OT_ImportCharater(Operator, ImportHelper):
     )
     def execute(self, context:  bpy.context):
         name, ext = os.path.splitext(self.filename)
-        if ext == '.fbx':
-            mixamo_fix_import_fbx(context, self.filepath)
-        elif ext == '.dae':
-            mixamo_fix_import_dae(context, self.filepath)
-        else:
-            return {'CANCELLED'}
+        mixamo_fix_import_fbx(context, self.filepath)
         armature = context.active_object
         action_2_NAL(armature, armature.animation_data.action)
         context.scene.mixamo_character = armature
-        context.scene.mixamo.input_folder = os.path.dirname(self.filepath)
+        if context.scene.mixamo.input_folder=='':
+            context.scene.mixamo.input_folder = os.path.dirname(self.filepath)
         return{'FINISHED'}
-
-
-def mixamo_fix_import_dae(context: bpy.context, dir: str):
-    """import mixamo animation (*.dae), 
-    rename ,
-    add root motion, 
-    etc. 
-    """
-    file = os.path.basename(dir)
-    print(f"input file:{dir}")
-    name, ext = os.path.splitext(file)
-    bpy.ops.wm.collada_import(
-        filepath=dir,
-        # auto_connect=True
-        # ignore_leaf_bones=context.scene.mixamo.ignore_leaf_bones, #TODO set when suport
-    )
-    arm_obj = [
-        obj for obj in context.selected_objects if obj.type == 'ARMATURE'][0]
-    context.view_layer.objects.active = arm_obj
-    anim_data: bpy.types.AnimData = arm_obj.animation_data
-    armature: bpy.types.Armature = arm_obj.data
-    action = anim_data.action
-    fcurves = action.fcurves
-    # rename Action
-    action.name = name
-    # rename bones
-    for k, v in bone_rename_maps.items():
-        k = k.replace('mixamorig:', 'mixamorig_')
-        if k in armature.bones:
-            armature.bones[k.replace('mixamorig:', 'mixamorig_')].name = v
-    # fix scale
-    scale = arm_obj.scale
-    scale_animation(fcurves, scale)
-    # fix rotation
-    bpy.ops.object.transform_apply(
-        location=True, rotation=True, scale=True)
-    # add root motion from hips
-    if context.scene.mixamo.add_root_motion:
-        mixamo_add_root_motion(context.scene.mixamo, armature, fcurves)
 
 
 def mixamo_add_root_motion(mixamo, armature, fcurves):
@@ -269,18 +226,11 @@ class MIXAMO_OT_Update(Operator):
             dir = os.path.join(input_folder, file)
             if name in bpy.data.actions:  # if exist, pass
                 continue
-            if ext == '.fbx':
-                mixamo_fix_import_fbx(context, dir)
-                # add animation  to NAL
-                action_2_NAL(mixamo_character, bpy.data.actions[name])
-                # remove
-                bpy.ops.object.delete()
-            elif ext == '.dae':
-                mixamo_fix_import_dae(context, dir)
-                action_2_NAL(mixamo_character, bpy.data.actions[name])
-                bpy.ops.object.delete()
-            else:
-                continue
+            mixamo_fix_import_fbx(context, dir)
+            # add animation  to NAL
+            action_2_NAL(mixamo_character, bpy.data.actions[name])
+            # remove
+            bpy.ops.object.delete()
         return{'FINISHED'}
 
 

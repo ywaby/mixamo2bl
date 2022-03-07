@@ -1,4 +1,4 @@
-This is a blender addon for import and update mixamo animations.  
+This is a blender addon for import and update mixamo animations (*.fbx).  
 
 License under MIT.
 
@@ -35,22 +35,25 @@ workflow
 4. select download folder
 5. update
 
-tips
-- *.dae need skin (without skin will lose armature origin position (edit mode)).
-- dae has a lot problem, use fbx is prefered
-<!-- ## TODO
+<!-- 
+## TODO
 - json preset for rename bone 
 - add NLA option if need
 - unit test
 - add github sponars
 - add control rig shape
-- conect bone and set roll =0 then recalc animatio
-- remove dae supportn
+- conect bone and set roll =0 then recalc animation
+
 BUG
  -->
 
 ## isuse
 #### why not connect bone when import
-for keep bone `roll=0` for
-- mirror animation work
-- dae and fbx can work together
+keep bone `roll=0` for mirror animation work.
+
+### not support dae
+as mixamo'dae has a lot problem.
+- without skin will lose origin bone pose
+- origin position not right
+- bone roll not same with fbx 
+- etc.
