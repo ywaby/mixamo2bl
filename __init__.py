@@ -3,23 +3,20 @@
 # This software is released under the MIT License.
 # https://opensource.org/licenses/MIT
 
-# notes
-
-
-from distutils.command.sdist import sdist
 import bpy
 import os
 from bpy_extras.io_utils import ImportHelper
-from bpy.props import StringProperty, BoolProperty, PointerProperty
-from bpy.types import Operator
+from bpy.props import StringProperty, BoolProperty, PointerProperty, EnumProperty
+from bpy.types import Operator, Panel
+from . import rootmotion
 
 bl_info = {
     "name": "Mixamo Import",
     "author": "ywaby",
-    "version": (0, 1, 1),
+    "version": (0, 2, 0),
     "blender": (3, 0, 0),
     "location": "3D View > UI (Right Panel) > Mixamo Tab",
-    "description": ("Import And Update mixamo animations"),
+    "description": ("Import and update mixamo animations"),
     "warning": "",
     "wiki_url": "https://github.com/ywaby/mixamo2bl",
     "tracker_url": "https://github.com/ywaby/mixamo2bl/issues",
@@ -30,59 +27,59 @@ bl_info = {
 bone_rename_maps = {
     # 'root': 'root',
     'mixamorig:Hips': 'hips',
-    'mixamorig:Spine': 'spine_01',
-    'mixamorig:Spine1': 'spine_02',
-    'mixamorig:Spine2': 'spine_03',
-    'mixamorig:LeftShoulder': 'shoulder_L',
-    'mixamorig:LeftArm': 'upperarm_L',
-    'mixamorig:LeftForeArm': 'lowerarm_L',
-    'mixamorig:LeftHand': 'hand_L',
-    'mixamorig:RightShoulder': 'shoulder_R',
-    'mixamorig:RightArm': 'upperarm_R',
-    'mixamorig:RightForeArm': 'lowerarm_R',
-    'mixamorig:RightHand': 'hand_R',
+    'mixamorig:Spine': 'spine.01',
+    'mixamorig:Spine1': 'spine.02',
+    'mixamorig:Spine2': 'spine.03',
+    'mixamorig:LeftShoulder': 'shoulder.L',
+    'mixamorig:LeftArm': 'upperarm.L',
+    'mixamorig:LeftForeArm': 'lowerarm.L',
+    'mixamorig:LeftHand': 'hand.L',
+    'mixamorig:RightShoulder': 'shoulder.R',
+    'mixamorig:RightArm': 'upperarm.R',
+    'mixamorig:RightForeArm': 'lowerarm.R',
+    'mixamorig:RightHand': 'hand.R',
     'mixamorig:Head': 'head',
     'mixamorig:Neck': 'neck',
-    'mixamorig:LeftEye': 'eye_L',
-    'mixamorig:RightEye': 'eye_R',
-    'mixamorig:LeftUpLeg': 'thigh_L',
-    'mixamorig:LeftLeg': 'shin_L',
-    'mixamorig:LeftFoot': 'foot_L',
-    'mixamorig:RightUpLeg': 'thigh_R',
-    'mixamorig:RightLeg': 'shin_R',
-    'mixamorig:RightFoot': 'foot_R',
-    'mixamorig:LeftHandIndex1': 'index_01_L',
-    'mixamorig:LeftHandIndex2': 'index_02_L',
-    'mixamorig:LeftHandIndex3': 'index_03_L',
-    'mixamorig:LeftHandMiddle1': 'middle_01_L',
-    'mixamorig:LeftHandMiddle2': 'middle_02_L',
-    'mixamorig:LeftHandMiddle3': 'middle_03_L',
-    'mixamorig:LeftHandPinky1': 'pinky_01_L',
-    'mixamorig:LeftHandPinky2': 'pinky_02_L',
-    'mixamorig:LeftHandPinky3': 'pinky_03_L',
-    'mixamorig:LeftHandRing1': 'ring_01_L',
-    'mixamorig:LeftHandRing2': 'ring_02_L',
-    'mixamorig:LeftHandRing3': 'ring_03_L',
-    'mixamorig:LeftHandThumb1': 'thumb_01_L',
-    'mixamorig:LeftHandThumb2': 'thumb_02_L',
-    'mixamorig:LeftHandThumb3': 'thumb_03_L',
-    'mixamorig:RightHandIndex1': 'index_01_R',
-    'mixamorig:RightHandIndex2': 'index_02_R',
-    'mixamorig:RightHandIndex3': 'index_03_R',
-    'mixamorig:RightHandMiddle1': 'middle_01_R',
-    'mixamorig:RightHandMiddle2': 'middle_02_R',
-    'mixamorig:RightHandMiddle3': 'middle_03_R',
-    'mixamorig:RightHandPinky1': 'pinky_01_R',
-    'mixamorig:RightHandPinky2': 'pinky_02_R',
-    'mixamorig:RightHandPinky3': 'pinky_03_R',
-    'mixamorig:RightHandRing1': 'ring_01_R',
-    'mixamorig:RightHandRing2': 'ring_02_R',
-    'mixamorig:RightHandRing3': 'ring_03_R',
-    'mixamorig:RightHandThumb1': 'thumb_01_R',
-    'mixamorig:RightHandThumb2': 'thumb_02_R',
-    'mixamorig:RightHandThumb3': 'thumb_03_R',
-    'mixamorig:LeftToeBase': 'toe_L',
-    'mixamorig:RightToeBase': 'toe_R'
+    'mixamorig:LeftEye': 'eye.L',
+    'mixamorig:RightEye': 'eye.R',
+    'mixamorig:LeftUpLeg': 'thigh.L',
+    'mixamorig:LeftLeg': 'shin.L',
+    'mixamorig:LeftFoot': 'foot.L',
+    'mixamorig:RightUpLeg': 'thigh.R',
+    'mixamorig:RightLeg': 'shin.R',
+    'mixamorig:RightFoot': 'foot.R',
+    'mixamorig:LeftHandIndex1': 'index.01.L',
+    'mixamorig:LeftHandIndex2': 'index.02.L',
+    'mixamorig:LeftHandIndex3': 'index.03.L',
+    'mixamorig:LeftHandMiddle1': 'middle.01.L',
+    'mixamorig:LeftHandMiddle2': 'middle.02.L',
+    'mixamorig:LeftHandMiddle3': 'middle.03.L',
+    'mixamorig:LeftHandPinky1': 'pinky.01.L',
+    'mixamorig:LeftHandPinky2': 'pinky.02.L',
+    'mixamorig:LeftHandPinky3': 'pinky.03.L',
+    'mixamorig:LeftHandRing1': 'ring.01.L',
+    'mixamorig:LeftHandRing2': 'ring.02.L',
+    'mixamorig:LeftHandRing3': 'ring.03.L',
+    'mixamorig:LeftHandThumb1': 'thumb.01.L',
+    'mixamorig:LeftHandThumb2': 'thumb.02.L',
+    'mixamorig:LeftHandThumb3': 'thumb.03.L',
+    'mixamorig:RightHandIndex1': 'index.01.R',
+    'mixamorig:RightHandIndex2': 'index.02.R',
+    'mixamorig:RightHandIndex3': 'index.03.R',
+    'mixamorig:RightHandMiddle1': 'middle.01.R',
+    'mixamorig:RightHandMiddle2': 'middle.02.R',
+    'mixamorig:RightHandMiddle3': 'middle.03.R',
+    'mixamorig:RightHandPinky1': 'pinky.01.R',
+    'mixamorig:RightHandPinky2': 'pinky.02.R',
+    'mixamorig:RightHandPinky3': 'pinky.03.R',
+    'mixamorig:RightHandRing1': 'ring.01.R',
+    'mixamorig:RightHandRing2': 'ring.02.R',
+    'mixamorig:RightHandRing3': 'ring.03.R',
+    'mixamorig:RightHandThumb1': 'thumb.01.R',
+    'mixamorig:RightHandThumb2': 'thumb.02.R',
+    'mixamorig:RightHandThumb3': 'thumb.03.R',
+    'mixamorig:LeftToeBase': 'toe.L',
+    'mixamorig:RightToeBase': 'toe.R'
 }
 
 
@@ -92,10 +89,11 @@ def action_2_NAL(arm_obj, action: bpy.types.Action):
     track = arm_obj.animation_data.nla_tracks.new()
     track.name = action.name
     track.mute = True
-    strip = track.strips.new(action.name, action.frame_range[0], action)
+    track.strips.new(action.name, action.frame_range[0], action)
 
 
-def scale_animation(fcurves: list[bpy.types.FCurve], scale):
+def scale_animation(action: bpy.types.Action, scale):
+    fcurves = action.fcurves
     for fc in fcurves:
         if fc.data_path.endswith('.location'):
             for key in fc.keyframe_points:
@@ -112,51 +110,26 @@ class MIXAMO_OT_ImportCharater(Operator, ImportHelper):
         options={'HIDDEN'},
         maxlen=255,  # Max internal buffer length, longer would be clamped.
     )
-    filter_folder : BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
+    filter_folder: BoolProperty(default=True, options={'HIDDEN', 'SKIP_SAVE'})
 
     filename: StringProperty(
         name="File Name",
     )
+
     def execute(self, context:  bpy.context):
+        scene = context.scene
         name, ext = os.path.splitext(self.filename)
         mixamo_fix_import_fbx(context, self.filepath)
         armature = context.active_object
-        action_2_NAL(armature, armature.animation_data.action)
-        context.scene.mixamo_character = armature
-        if context.scene.mixamo.input_folder=='':
-            context.scene.mixamo.input_folder = os.path.dirname(self.filepath)
+        if scene.mixamo.add_root_motion:
+            bpy.ops.mixamo.add_root_motion()
+        if scene.mixamo.stash_action:
+            action_2_NAL(armature, armature.animation_data.action)
+        scene.mixamo_character = armature
+        if scene.mixamo.input_folder == '':
+            scene.mixamo.input_folder = os.path.dirname(self.filepath)
         return{'FINISHED'}
 
-
-def mixamo_add_root_motion(mixamo, armature, fcurves):
-    """add root motion"""
-    # add root bone
-    bpy.ops.object.mode_set(mode='EDIT', toggle=False)
-    root = armature.edit_bones.new('root')
-    root.head = (0, 0, 0)
-    root.tail = (0, 0, 0.25)
-    armature.edit_bones['hips'].parent = root
-    bpy.ops.object.mode_set(mode='OBJECT', toggle=False)
-    # hips location to rootbone
-    if mixamo.root_motion_copy_lx:
-        fcurves.find(data_path='pose.bones["hips"].location',
-                     index=0).data_path = 'pose.bones["root"].location'
-    if mixamo.root_motion_copy_ly:
-        fcurves.find(data_path='pose.bones["hips"].location',
-                     index=1).data_path = 'pose.bones["root"].location'
-    if mixamo.root_motion_copy_lz:
-        fcurves.find(data_path='pose.bones["hips"].location',
-                     index=2).data_path = 'pose.bones["root"].location'
-
-    if mixamo.root_motion_copy_r:
-        fcurves.find(data_path='pose.bones["hips"].rotation_quaternion',
-                     index=0).data_path = 'pose.bones["root"].rotation_quaternion'
-        fcurves.find(data_path='pose.bones["hips"].rotation_quaternion',
-                     index=1).data_path = 'pose.bones["root"].rotation_quaternion'
-        fcurves.find(data_path='pose.bones["hips"].rotation_quaternion',
-                     index=2).data_path = 'pose.bones["root"].rotation_quaternion'
-        fcurves.find(data_path='pose.bones["hips"].rotation_quaternion',
-                     index=3).data_path = 'pose.bones["root"].rotation_quaternion'
 
 
 def mixamo_fix_import_fbx(context, dir: str):
@@ -180,7 +153,6 @@ def mixamo_fix_import_fbx(context, dir: str):
     anim_data: bpy.types.AnimData = arm_obj.animation_data
     armature: bpy.types.Armature = arm_obj.data
     action = anim_data.action
-    fcurves = action.fcurves
     # rename Action
     action.name = name
     # rename bones
@@ -190,15 +162,12 @@ def mixamo_fix_import_fbx(context, dir: str):
 
     # fix scale
     scale = arm_obj.scale
-    scale_animation(fcurves, scale)
+    scale_animation(action, scale)
 
     # fix rotation
     bpy.ops.object.transform_apply(
         location=True, rotation=True, scale=True)
-
-    # add root motion from hips
-    if context.scene.mixamo.add_root_motion:
-        mixamo_add_root_motion(context.scene.mixamo, armature, fcurves)
+    # TODO fix bone roll
 
 
 class MIXAMO_OT_Update(Operator):
@@ -209,32 +178,38 @@ class MIXAMO_OT_Update(Operator):
 
     @classmethod
     def poll(cls, context: bpy.context):
-        return True
-
+        return  context.scene.mixamo.input_folder 
+        
     def execute(self, context: bpy.context):
-        mixamo_character = context.scene.mixamo_character
-        if context.scene.mixamo_character == None:
+        scene = context.scene
+        mixamo_character = scene.mixamo_character
+        if scene.mixamo_character == None:
             self.report({'WARNING'},
                         'Not Found mixamo character in current scene.')
             return {'CANCELLED'}
 
-        input_folder = context.scene.mixamo.input_folder
+        input_folder = scene.mixamo.input_folder
         input_folder = bpy.path.abspath(input_folder)
         files = os.listdir(input_folder)
+        files=[f for f in files if os.path.splitext(f)[1]=='.fbx' ]
         for file in files:
             name, ext = os.path.splitext(file)
             dir = os.path.join(input_folder, file)
             if name in bpy.data.actions:  # if exist, pass
                 continue
+            
             mixamo_fix_import_fbx(context, dir)
+            if scene.mixamo.add_root_motion:
+                bpy.ops.mixamo.add_root_motion()
             # add animation  to NAL
-            action_2_NAL(mixamo_character, bpy.data.actions[name])
+            if scene.mixamo.stash_action:
+                action_2_NAL(mixamo_character, bpy.data.actions[name])
             # remove
             bpy.ops.object.delete()
         return{'FINISHED'}
 
 
-class MIXAMO_PT_Main(bpy.types.Panel):
+class MIXAMO_PT_Main(Panel):
     """Mixamo Import UI"""
     bl_label = "Mixamo"
     bl_space_type = 'VIEW_3D'
@@ -242,44 +217,34 @@ class MIXAMO_PT_Main(bpy.types.Panel):
     bl_category = "Mixamo"
 
     def draw(self, context):
-        layout = self.layout
-        scene = bpy.context.scene
-        obj = context.active_object
+        layout: bpy.types.UILayout = self.layout
+        scene = context.scene
         box = layout.box()
         row = box.row()
         row.prop(scene, "mixamo_character")
-
+        # import
         box = layout.box()
         row = box.row()
         row.label(text="Import Option")
         row = box.row()
         row.prop(scene.mixamo, 'ignore_leaf_bones')
-
+        row = box.row()
+        row.prop(scene.mixamo, 'stash_action')
+        # root motion
         row = box.row()
         row.prop(scene.mixamo, 'add_root_motion')
-        if scene.mixamo.add_root_motion:
-            box = box.box()
-            row = box.row(align=True)
-            row.label(text='convert root motion from hips')
-            row = box.row(align=True)
-            row.label(text='location')
-            row.prop(scene.mixamo, 'root_motion_copy_lx',
-                     text='x', toggle=True)
-            row.prop(scene.mixamo, 'root_motion_copy_lz',
-                     text='y', toggle=True)
-            row.prop(scene.mixamo, 'root_motion_copy_ly',
-                     text='z', toggle=True)
-            row = box.row(align=True)
-            row.prop(scene.mixamo, 'root_motion_copy_r',
-                     text='Rotation Quaternion', toggle=True)
+
+        # update
         box = layout.box()
         row = box.row()
         row.operator("mixamo.import_character")
         box = layout.box()
         row = box.row()
         row.prop(scene.mixamo, "input_folder")
+
         row = box.row()
         row.operator("mixamo.update")
+
 
 class MixamoPropertyGroup(bpy.types.PropertyGroup):
     # TODO use it when bug fixed
@@ -293,6 +258,10 @@ class MixamoPropertyGroup(bpy.types.PropertyGroup):
         maxlen=256,
         default="",
         subtype='DIR_PATH')
+    stash_action: BoolProperty(
+        name='Stash Action',
+        description='Stash action to NAL.',
+        default=True)
     ignore_leaf_bones: BoolProperty(
         name='Ignore Leaf Bones',
         description='Ignore leaf bones when import mixamo.',
@@ -301,33 +270,19 @@ class MixamoPropertyGroup(bpy.types.PropertyGroup):
         name='Add Root Motion',
         description='Add root bone and copy motion from hips.',
         default=False)
-    root_motion_copy_lx: BoolProperty(
-        name='Root Motion Copy Location x',
-        description='Root bone copy location x from hips.',
-        default=True)
-    root_motion_copy_ly: BoolProperty(
-        name='Root Motion Copy Location y',
-        description='Root bone copy location y from hips.',
-        default=True)
-    root_motion_copy_lz: BoolProperty(
-        name='Root Motion Copy Location z',
-        description='Root bone copy location z from hips.',
-        default=True)
-    root_motion_copy_r: BoolProperty(
-        name='Root Motion Copy Rotaion Quaternion',
-        description='Root bone copy rotaion from hips.',
-        default=True)
+
 
 
 classes = (
     MixamoPropertyGroup,
     MIXAMO_OT_ImportCharater,
     MIXAMO_OT_Update,
-    MIXAMO_PT_Main
+    MIXAMO_PT_Main,
 )
 
 
 def register():
+    print("register mixamo")
     for cls in classes:
         bpy.utils.register_class(cls)
     bpy.types.Scene.mixamo = PointerProperty(
@@ -336,9 +291,11 @@ def register():
         type=bpy.types.Object,
         name='Mixamo Armature',
         description='Merge animation to this object')
+    rootmotion.register()
 
 
 def unregister():
+    rootmotion.unregister()
     for cls in reversed(classes):
         bpy.utils.unregister_class(cls)
     del bpy.types.Scene.mixamo

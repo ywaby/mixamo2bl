@@ -38,12 +38,11 @@ workflow
 <!-- 
 ## TODO
 - json preset for rename bone 
-- add NLA option if need
-- unit test
+- auto test with task
 - add github sponars
 - add control rig shape
 - conect bone and set roll =0 then recalc animation
-
+- remove root motion from current action
 BUG
  -->
 
