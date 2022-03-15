@@ -89,7 +89,7 @@ def action_2_NAL(arm_obj, action: bpy.types.Action):
     track = arm_obj.animation_data.nla_tracks.new()
     track.name = action.name
     track.mute = True
-    track.strips.new(action.name, action.frame_range[0], action)
+    track.strips.new(action.name, int(action.frame_range[0]), action)
 
 
 def scale_animation(action: bpy.types.Action, scale):

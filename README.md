@@ -37,12 +37,13 @@ workflow
 
 <!-- 
 ## TODO
+- remove root motion from current action
+- conect bone and set roll =0 then recalc animation
+- fix armature as a ops
 - json preset for rename bone 
 - auto test with task
 - add github sponars
 - add control rig shape
-- conect bone and set roll =0 then recalc animation
-- remove root motion from current action
 BUG
  -->
 
@@ -50,7 +51,7 @@ BUG
 #### why not connect bone when import
 keep bone `roll=0` for mirror animation work.
 
-### not support dae
+#### not support dae
 as mixamo'dae has a lot problem.
 - without skin will lose origin bone pose
 - origin position not right
